@@ -46,44 +46,43 @@ sub ort {
 		return $self->not_found();
 	}
 
-	my $data_obj;
+	my $response_obj;
 	my $host_name = $server_obj->host_name;
 
 	my %condition = ( 'me.host_name' => $host_name );
-	my $rs_profile = $self->db->resultset('Server')->search( \%condition, { prefetch => [ 'cdn', 'profile' ] } );
+	my $rs_server = $self->db->resultset('Server')->search( \%condition, { prefetch => [ 'cdn', 'profile' ] } );
 
-	my $row = $rs_profile->next;
-	if ($row) {
-		my $cdn_name = defined( $row->cdn_id ) ? $row->cdn->name : "";
+	my $server = $rs_server->next;
+	if ($server) {
+		my $cdn_name = defined( $server->cdn_id ) ? $server->cdn->name : "";
 
-		$data_obj->{'profile'}->{'name'}   = $row->profile->name;
-		$data_obj->{'profile'}->{'id'}     = $row->profile->id;
-		$data_obj->{'other'}->{'CDN_name'} = $cdn_name;
+		$response_obj->{'profile'}->{'name'}   = $server->profile->name;
+		$response_obj->{'profile'}->{'id'}     = $server->profile->id;
+		$response_obj->{'other'}->{'CDN_name'} = $cdn_name;
 
 		%condition = (
-			'profile_parameters.profile' => $data_obj->{'profile'}->{'id'},
+			'profile_parameters.profile' => $response_obj->{'profile'}->{'id'},
 			-or                          => [ 'name' => 'location', 'name' => 'scope' ]
 		);
-		my $rs_config = $self->db->resultset('Parameter')->search( \%condition, { join => 'profile_parameters' } );
-		while ( my $row = $rs_config->next ) {
-			if ( $row->name eq 'location' ) {
-				$data_obj->{'config_files'}->{ $row->config_file }->{'location'} = $row->value;
+		my $rs_param = $self->db->resultset('Parameter')->search( \%condition, { join => 'profile_parameters' } );
+		while ( my $param = $rs_param->next ) {
+			if ( $param->name eq 'location' ) {
+				$response_obj->{'config_files'}->{ $param->config_file }->{'location'} = $param->value;
 			}
-			elsif ( $row->name eq 'scope' ) {
-				$data_obj->{'config_files'}->{ $row->config_file }->{'scope'} = $row->value;
+			elsif ( $param->name eq 'scope' ) {
+				$response_obj->{'config_files'}->{ $param->config_file }->{'scope'} = $param->value;
 			}
 		}
 	}
 
-	foreach my $file ( keys %$data_obj->{'config_files'} ) {
-		if ( !defined( $data_obj->{'config_files'}->{$file}->{'scope'} ) ) {
-			$data_obj->{'config_files'}->{$file}->{'scope'} = $self->get_scope($file);
+	foreach my $config_file ( keys %$response_obj->{'config_files'} ) {
+		if ( !defined( $response_obj->{'config_files'}->{$config_file}->{'scope'} ) ) {
+			$response_obj->{'config_files'}->{$config_file}->{'scope'} = $self->get_scope($config_file);
 		}
 	}
 
-	my $file_contents = encode_json($data_obj);
+	$self->success( $response_obj );
 
-	return $self->render( text => $file_contents, format => 'txt' );
 }
 
 #entry point for server scope api route.
