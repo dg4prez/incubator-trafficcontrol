@@ -19,11 +19,9 @@ package UI::DeliveryService;
 
 # JvD Note: you always want to put Utils as the first use. Sh*t don't work if it's after the Mojo lines.
 use UI::Utils;
-use API::Configs::ApacheTrafficServer;
 use Mojo::Base 'Mojolicious::Controller';
 use Data::Dumper;
 use JSON;
-
 
 sub index {
 	my $self = shift;
@@ -590,20 +588,6 @@ sub header_rewrite {
 			$param_id = $insert->id;
 		}
 
-		my $scope_id = $self->db->resultset('Parameter')->search( { -and => [ name => 'scope', config_file => $fname ] } )->get_column('id')->single();
-		if (!defined($scope_id) ) {
-			my $scope = $self->API::Configs::ApacheTrafficServer::get_scope($fname);
-			my $insert = $self->db->resultset('Parameter')->create(
-				{
-					config_file => $fname,
-					name 		=> 'scope',
-					value 		=> $scope
-				}
-			);
-			$insert->insert();
-			$scope_id = $insert->id;
-		}
-
 		my $cdn_name = undef;
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		if ( $tier eq "mid" ) {
@@ -630,21 +614,6 @@ sub header_rewrite {
 					}
 				);
 
-			}
-			my $scope_link = $self->db->resultset('ProfileParameter')->search( { profile => $profile_id, parameter => $scope_id } )->single();
-			if ( !defined($scope_link) ) {
-				if ($cdn_name) {
-					my $p_cdn_param = $self->db->resultset('Server')->search( { 'me.profile' => $profile_id }, { prefetch => 'cdn' } );
-					if ( $p_cdn_param->next->cdn->name ne $cdn_name ) {
-						next;
-					}
-				}
-				my $insert = $self->db->resultset('ProfileParameter')->create(
-					{
-						profile   => $profile_id,
-						parameter => $scope_id
-					}
-				);
 			}
 		}
 	}
@@ -684,20 +653,6 @@ sub regex_remap {
 			$param_id = $insert->id;
 		}
 
-		my $scope_id = $self->db->resultset('Parameter')->search( { -and => [ name => 'scope', config_file => $fname ] } )->get_column('id')->single();
-		if (!defined($scope_id) ) {
-			my $scope = $self->API::Configs::ApacheTrafficServer::get_scope($fname);
-			my $insert = $self->db->resultset('Parameter')->create(
-				{
-					config_file => $fname,
-					name 		=> 'scope',
-					value 		=> $scope
-				}
-			);
-			$insert->insert();
-			$scope_id = $insert->id;
-		}
-
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		my @profiles = $self->db->resultset('Server')->search( { id => { -in => \@servers } } )->get_column('profile')->all();
 		foreach my $profile_id (@profiles) {
@@ -707,15 +662,6 @@ sub regex_remap {
 					{
 						profile   => $profile_id,
 						parameter => $param_id
-					}
-				);
-			}
-			my $scope_link = $self->db->resultset('ProfileParameter')->search( { profile => $profile_id, parameter => $scope_id } )->single();
-			if ( !defined($scope_link) ) {
-				my $insert = $self->db->resultset('ProfileParameter')->create(
-					{
-						profile   => $profile_id,
-						parameter => $scope_id
 					}
 				);
 			}
@@ -754,20 +700,6 @@ sub cacheurl {
 			$param_id = $insert->id;
 		}
 
-		my $scope_id = $self->db->resultset('Parameter')->search( { -and => [ name => 'scope', config_file => $fname ] } )->get_column('id')->single();
-		if (!defined($scope_id) ) {
-			my $scope = $self->API::Configs::ApacheTrafficServer::get_scope($fname);
-			my $insert = $self->db->resultset('Parameter')->create(
-				{
-					config_file => $fname,
-					name 		=> 'scope',
-					value 		=> $scope
-				}
-			);
-			$insert->insert();
-			$scope_id = $insert->id;
-		}
-
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		my @profiles = $self->db->resultset('Server')->search( { id => { -in => \@servers } } )->get_column('profile')->all();
 		foreach my $profile_id (@profiles) {
@@ -777,15 +709,6 @@ sub cacheurl {
 					{
 						profile   => $profile_id,
 						parameter => $param_id
-					}
-				);
-			}
-			my $scope_link = $self->db->resultset('ProfileParameter')->search( { profile => $profile_id, parameter => $scope_id } )->single();
-			if ( !defined($scope_link) ) {
-				my $insert = $self->db->resultset('ProfileParameter')->create(
-					{
-						profile   => $profile_id,
-						parameter => $scope_id
 					}
 				);
 			}
@@ -822,20 +745,6 @@ sub url_sig {
 			$param_id = $insert->id;
 		}
 
-		my $scope_id = $self->db->resultset('Parameter')->search( { -and => [ name => 'scope', config_file => $fname ] } )->get_column('id')->single();
-		if (!defined($scope_id) ) {
-			my $scope = $self->API::Configs::ApacheTrafficServer::get_scope($fname);
-			my $insert = $self->db->resultset('Parameter')->create(
-				{
-					config_file => $fname,
-					name 		=> 'scope',
-					value 		=> $scope
-				}
-			);
-			$insert->insert();
-			$scope_id = $insert->id;
-		}
-
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		my @profiles = $self->db->resultset('Server')->search( { id => { -in => \@servers } } )->get_column('profile')->all();
 		foreach my $profile_id (@profiles) {
@@ -845,15 +754,6 @@ sub url_sig {
 					{
 						profile   => $profile_id,
 						parameter => $param_id
-					}
-				);
-			}
-			my $scope_link = $self->db->resultset('ProfileParameter')->search( { profile => $profile_id, parameter => $scope_id } )->single();
-			if ( !defined($scope_link) ) {
-				my $insert = $self->db->resultset('ProfileParameter')->create(
-					{
-						profile   => $profile_id,
-						parameter => $scope_id
 					}
 				);
 			}
@@ -873,13 +773,6 @@ sub delete_cfg_file {
 		$self->app->log->info( 'deleting location parameter for ' . $fname );
 		my $delete = $self->db->resultset('Parameter')->search( { id => $param_id } );
 		$delete->delete();
-	}
-
-	my $scope_id = $self->db->resultset('Parameter')->search( { -and => [ name => 'scope', config_file => $fname ] } )->get_column('id')->single();
-	if ( defined($scope_id) ) {
-		$self->app->log->info( 'deleting scope parameter for ' . $fname );
-		my $delete = $self->db->resultset('Parameter')->search( { id => $scope_id } );
-		$delete->delete();		
 	}
 }
 
