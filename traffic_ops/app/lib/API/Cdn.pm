@@ -27,6 +27,7 @@ use UI::DeliveryService;
 use MojoPlugins::Response;
 use Common::ReturnCodes qw(SUCCESS ERROR);
 use strict;
+use API::Configs::ApacheTrafficServer;
 
 sub index {
 	my $self = shift;
@@ -295,6 +296,29 @@ sub queue_updates {
 	$response->{cdnId} = $cdn_id;
 	$response->{action} = $params->{action};
 	return $self->success($response);
+}
+
+sub definition {
+	my $self = shift;
+	my $id = $self->param('id');
+	my @data;
+
+	if ( !&is_oper($self) ) {
+		return $self->forbidden("Forbidden. You must have the operations role to perform this operation.");
+	}
+
+	my $cdn_obj = $self->API::Configs::ApacheTrafficServer::cdn_data($id);
+	if ( !defined($cdn_obj) ) {
+		return $self->not_found();
+	}
+	print STDERR Dumper($cdn_obj->id);
+
+	my $ds_list = $self->API::Configs::ApacheTrafficServer::cdn_ds_data( $cdn_obj->id );
+	print STDERR Dumper($ds_list);
+	#my $response = encode_json($ds_list);
+	
+	$self->success( \$ds_list );
+
 }
 
 
