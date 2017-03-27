@@ -28,6 +28,7 @@ use MojoPlugins::Response;
 use Common::ReturnCodes qw(SUCCESS ERROR);
 use strict;
 use API::Configs::ApacheTrafficServer;
+use Data::Dumper;
 
 sub index {
 	my $self = shift;
@@ -301,7 +302,6 @@ sub queue_updates {
 sub definition {
 	my $self = shift;
 	my $id = $self->param('id');
-	my @data;
 
 	if ( !&is_oper($self) ) {
 		return $self->forbidden("Forbidden. You must have the operations role to perform this operation.");
@@ -311,16 +311,438 @@ sub definition {
 	if ( !defined($cdn_obj) ) {
 		return $self->not_found();
 	}
-	print STDERR Dumper($cdn_obj->id);
-
-	my $ds_list = $self->API::Configs::ApacheTrafficServer::cdn_ds_data( $cdn_obj->id );
-	print STDERR Dumper($ds_list);
-	#my $response = encode_json($ds_list);
 	
-	$self->success( \$ds_list );
+	my @delivery_service = $self->delivery_service_data_by_cdn($cdn_obj->id);
 
+	my @deliveryservice_server = $self->deliveryservice_server_data_by_cdn($cdn_obj->id);
+
+	my @server = $self->server_data_by_cdn($cdn_obj->id);
+
+	my @profile_parameter = $self->profile_parameter_data_by_cdn($cdn_obj->id);
+
+	my @parameter = $self->parameter_data_by_cdn($cdn_obj->id);
+
+	my @cachegroup = $self->cachegroup_data_by_cdn($cdn_obj->id);
+
+	my @cachegroup_parameter = $self->cachegroup_parameter_data_by_cdn($cdn_obj->id);
+
+	#$self->render( json => \@server );
+
+	my $file_contents;
+
+	$file_contents->{deliveryservice_server} = encode_json(\@deliveryservice_server);
+	$file_contents->{delivery_service} = encode_json(\@delivery_service);
+	$file_contents->{server} = encode_json(\@server);
+	$file_contents->{profile_parameter} = encode_json(\@profile_parameter);
+	$file_contents->{parameter} = encode_json(\@parameter);
+	$file_contents->{cachegroup} = encode_json(\@cachegroup);
+	$file_contents->{cachegroup_parameter} = encode_json(\@cachegroup_parameter);
+
+	$self->success( $file_contents );
 }
 
+sub delivery_service_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	#my $orderby = "id";
+	#$orderby = $self->param('orderby') if ( defined $self->param('orderby') );
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		ds.id,
+		ds.xml_id,
+		ds.dscp,
+		ds.signed,
+		ds.qstring_ignore,
+		ds.org_server_fqdn,
+		tp.name,
+		pf.name,
+		ds.protocol,
+		ds.ssl_key_version,
+		ds.range_request_handling,
+		ds.edge_header_rewrite,
+		ds.mid_header_rewrite,
+		ds.regex_remap,
+		ds.cacheurl,
+		ds.remap_text,
+		ds.multi_site_origin,
+		ds.multi_site_origin_algorithm 
+		from deliveryservice ds 
+		LEFT JOIN type tp ON tp.id = ds.type 
+		LEFT JOIN profile pf ON pf.id = ds.profile
+		where ds.cdn_id = '.$cdn_id,';
+		order by ds.id;
+	';
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $ds_id;
+	my $ds_xml_id;
+	my $ds_dscp;
+	my $ds_signed;
+	my $ds_qstring_ignore;
+	my $ds_org_server_fqdn;
+	my $ds_tp_name;
+	my $ds_pf_name;
+	my $ds_protocol;
+	my $ds_ssl_key_version;
+	my $ds_range_request_handling;
+	my $ds_edge_header_rewrite;
+	my $ds_mid_header_rewrite;
+	my $ds_regex_remap;
+	my $ds_cacheurl;
+	my $ds_remap_text;
+	my $ds_multi_site_origin;
+	my $ds_multi_site_origin_algorithm;
+	
+	$stmt->bind_columns(
+		\$ds_id,
+		\$ds_xml_id,
+		\$ds_dscp,
+		\$ds_signed,
+		\$ds_qstring_ignore,
+		\$ds_org_server_fqdn,
+		\$ds_tp_name,
+		\$ds_pf_name,
+		\$ds_protocol,
+		\$ds_ssl_key_version,
+		\$ds_range_request_handling,
+		\$ds_edge_header_rewrite,
+		\$ds_mid_header_rewrite,
+		\$ds_regex_remap,
+		\$ds_cacheurl,
+		\$ds_remap_text,
+		\$ds_multi_site_origin,
+		\$ds_multi_site_origin_algorithm
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"id" => $ds_id,
+					"xml_id" => $ds_xml_id,
+					"dscp" => $ds_dscp,
+					"signed" => $ds_signed,
+					"qstring_ignore" => $ds_qstring_ignore,
+					"org_server_fqdn" => $ds_org_server_fqdn,
+					"type" => $ds_tp_name,
+					"profile" => $ds_pf_name,
+					"protocol" => $ds_protocol,
+					"ssl_key_version" => $ds_ssl_key_version,
+					"range_request_handling" => $ds_range_request_handling,
+					"edge_header_rewrite" => $ds_edge_header_rewrite,
+					"mid_header_rewrite" => $ds_mid_header_rewrite,
+					"regex_remap" => $ds_regex_remap,
+					"cacheurl" => $ds_cacheurl,
+					"remap_text" => $ds_remap_text,
+					"multi_site_origin" => $ds_multi_site_origin,
+					"multi_site_origin_algorithm" => $ds_multi_site_origin_algorithm
+				}
+			);
+	}
+
+	return @data;
+}
+
+sub deliveryservice_server_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		deliveryservice,
+		server
+		from deliveryservice_server
+		where deliveryservice = ANY (
+			SELECT id from deliveryservice where cdn_id = '.$cdn_id.'
+		);
+	';
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $deliveryservice;
+	my $server;
+	
+	$stmt->bind_columns(
+		\$deliveryservice,
+		\$server
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"deliveryservice" => $deliveryservice,
+					"server" => $server
+				}
+			);
+	}
+	return @data;
+}
+
+sub server_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		sv.id,
+		sv.host_name,
+		sv.domain_name,
+		sv.ip_address,
+		sv.ip6_address,
+		sv.cachegroup,
+		tp.name,
+		sv.status,
+		pf.name as profile_name,
+		sv.profile as profile_id,
+		pf.type as profile_type
+		from server sv
+		LEFT JOIN type tp ON tp.id = sv.type
+		LEFT JOIN profile pf ON pf.id = sv.profile
+		where sv.id = ANY ( 
+			SELECT DISTINCT server 
+			from deliveryservice_server  
+			where deliveryservice = ANY (
+				SELECT id from deliveryservice where cdn_id = '.$cdn_id.'
+			)
+		);
+	';
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $sv_id;
+	my $sv_host_name;
+	my $sv_domain_name;
+	my $sv_ip_address;
+	my $sv_ip6_address;
+	my $sv_cachegroup;
+	my $tp_name;
+	my $sv_status;
+	my $profile_name;
+	my $profile_id;
+	my $profile_type;
+	
+	$stmt->bind_columns(
+		\$sv_id,
+		\$sv_host_name,
+		\$sv_domain_name,
+		\$sv_ip_address,
+		\$sv_ip6_address,
+		\$sv_cachegroup,
+		\$tp_name,
+		\$sv_status,
+		\$profile_name,
+		\$profile_id,
+		\$profile_type
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"id" => $sv_id,
+					"host_name" => $sv_host_name,
+					"domain_name" => $sv_domain_name,
+					"ip_address" => $sv_ip_address,
+					"ip6_address" => $sv_ip6_address,
+					"cachegroup" => $sv_cachegroup,
+					"type" => $tp_name,
+					"status" => $sv_status,
+					"profile" => $profile_name,
+					"profile_id" => $profile_id,
+					"profile_type" => $profile_type
+				}
+			);
+	}
+	return @data;
+}
+
+sub profile_parameter_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		profile,
+		parameter
+		from profile_parameter
+		where profile = ANY (select DISTINCT profile
+			from server sv
+			where sv.id = ANY (select DISTINCT server
+				from deliveryservice_server
+				where deliveryservice = ANY (select id from deliveryservice where cdn_id = '.$cdn_id.'
+				)
+			)
+		);
+	';
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $profile;
+	my $parameter;
+	
+	$stmt->bind_columns(
+		\$profile,
+		\$parameter
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"profile" => $profile,
+					"parameter" => $parameter
+				}
+			);
+	}
+	return @data;
+}
+
+sub parameter_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		id,
+		name,
+		config_file,
+		value
+		from parameter;
+	';
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $id;
+	my $name;
+	my $config_file;
+	my $value;
+	
+	$stmt->bind_columns(
+		\$id,
+		\$name,
+		\$config_file,
+		\$value
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"id" => $id,
+					"name" => $name,
+					"config_file" => $config_file,
+					"value" => $value
+				}
+			);
+	}
+	return @data;
+}
+
+sub cachegroup_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		cg.id, 
+		cg.name, 
+		cg.parent_cachegroup_id, 
+		cg.secondary_parent_cachegroup_id, 
+		tp.name
+		from cachegroup cg
+		LEFT JOIN type tp ON tp.id = cg.type 
+		where cg.id = ANY (
+			select DISTINCT cachegroup from server where id = ANY ( 
+				select server 
+				from deliveryservice_server
+				where deliveryservice = ANY (
+					select id from deliveryservice where cdn_id = '.$cdn_id.'
+				)
+			)
+		);
+	';
+
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $cg_id;
+	my $cg_name;
+	my $cg_parent_cachegroup_id;
+	my $cg_secondary_cachegroup_id;
+	my $tp_name;
+	
+	$stmt->bind_columns(
+		\$cg_id,
+		\$cg_name,
+		\$cg_parent_cachegroup_id,
+		\$cg_secondary_cachegroup_id,
+		\$tp_name
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"id" => $cg_id,
+					"name" => $cg_name,
+					"parent_cachegroup_id" => $cg_parent_cachegroup_id,
+					"secondary_parent_cachegroup_id" => $cg_secondary_cachegroup_id,
+					"type" => $tp_name
+				}
+			);
+	}
+	return @data;
+}
+
+sub cachegroup_parameter_data_by_cdn {
+	my $self = shift;
+	my $cdn_id = shift;
+	my @data;
+
+	my $dbh = $self->db->storage->dbh;
+	#$orderby = $dbh->quote_identifier($orderby);
+	my $qry = 'SELECT
+		cachegroup,
+		parameter
+		from cachegroup_parameter
+	';
+
+	my $stmt = $dbh->prepare($qry);
+	$stmt->execute();
+
+	my $cachegroup;
+	my $parameter;
+	
+	$stmt->bind_columns(
+		\$cachegroup,
+		\$parameter
+		);
+
+	while ( my $row = $stmt->fetch() ) {
+		push(
+				@data, {
+					"cachegroup" => $cachegroup,
+					"parameter" => $parameter
+				}
+			);
+	}
+	return @data;
+}
 
 sub configs_monitoring {
 	my $self      = shift;
