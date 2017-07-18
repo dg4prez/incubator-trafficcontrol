@@ -487,6 +487,7 @@ sub api_routes {
 	$r->get("/api/$version/logs/newcount")->over( authenticated => 1, not_ldap => 1 )->to( 'ChangeLog#newlogcount', namespace => $namespace );
 
 	# -- CONFIG FILES
+	$r->get("/api/$version/servers/#id/configfiles/metadata")->over( authenticated => 1, not_ldap => 1 )->to ( 'Cache#get_metadata', namespace => 'API::Configs' );
 	$r->get("/api/$version/servers/#id/configfiles/ats")->over( authenticated => 1, not_ldap => 1 )->to ( 'ApacheTrafficServer#get_config_metadata', namespace => 'API::Configs' );
 	$r->get("/api/$version/profiles/#id/configfiles/ats/#filename")->over( authenticated => 1, not_ldap => 1 )->to ( 'ApacheTrafficServer#get_profile_config', namespace => 'API::Configs' );
 	$r->get("/api/$version/servers/#id/configfiles/ats/#filename")->over( authenticated => 1, not_ldap => 1 )->to ( 'ApacheTrafficServer#get_server_config', namespace => 'API::Configs' );
