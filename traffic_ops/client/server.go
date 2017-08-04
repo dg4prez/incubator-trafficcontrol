@@ -32,6 +32,11 @@ type ServerResponse struct {
 	Response []Server `json:"response"`
 }
 
+// ServerMetadataResponse ...
+type ServerMetadataResponse struct {
+	Response ServerMetadata `json:"response"`
+}
+
 // Server ...
 type Server struct {
 	DomainName    string `json:"domainName"`
@@ -69,6 +74,32 @@ type Server struct {
 	XMPPPasswd     string `json:"xmppPasswd"`
 }
 
+// ServerMetadata provides the metadata required for the cache manager client.
+type ServerMetadata struct {
+	HostName      string    `json:"hostName"`
+	ID            int       `json:"hostId"`
+	IPAddress     string    `json:"hostIpv4"`
+	TCPPort       int       `json:"tcpPort"`
+	Cachegroup    string    `json:"cachegroup"`
+	ProfileName   string    `json:"profileName`
+	ProfileId     int       `json:"profileId"`
+	CDNName       string    `json:"cdnName"`
+	CDNId         int       `json:"cdnId"`
+	Status        string    `json:"status"`
+	ToUrl         string    `json:"toUrl"`
+	ToRevProxyUrl string    `json:"toRevProxyUrl"`
+	Type          string    `json:"type"`
+	DSCount       int       `json:"dsCount"`
+	DSList        []DSBrief `json:"dsList"`
+}
+
+// DSBrief ...
+type DSBrief struct {
+	Version string `json:"version"`
+	ID      int    `json:"id"`
+	XMLID   string `json:"xmlID"`
+}
+
 // Servers gets an array of servers
 func (to *Session) Servers() ([]Server, error) {
 	url := "/api/1.2/servers.json"
@@ -96,6 +127,23 @@ func (to *Session) Server(name string) (*Server, error) {
 	defer resp.Body.Close()
 
 	data := ServerDetailResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	return &data.Response, nil
+}
+
+// GetServerMetadata gets a server's metadata by hostname
+func (to *Session) GetServerMetadata(name string) (*ServerMetadata, error) {
+	url := fmt.Sprintf("/api/1.2/servers/%s/metadata", name)
+	resp, err := to.request("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	data := ServerMetadataResponse{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}

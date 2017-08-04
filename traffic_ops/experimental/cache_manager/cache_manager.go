@@ -73,6 +73,10 @@ func main() {
 	}
 
 	shortHostname := strings.Split(hostname, ".")[0]
+
+	// testing: change shortHostName to arbitrary cache name
+	shortHostname = "odol-atsec-atl-01"
+
 	t := time.Now()
 	fmt.Printf("Starting Cache Manager Service at %[1]v on %[2]v...\n", t.Format("2006-01-02 15:04:05 MST"), shortHostname)
 
@@ -106,10 +110,17 @@ func main() {
 	//fmt.Println(deliveryService)
 	//fmt.Println(deliveryServices[3])
 
-	server, err := toClient.Server("odol-atsec-atl-01")
-	fmt.Printf("odol-atsec-atl-01: ")
-	fmt.Printf(server.IPAddress)
+	server, err := toClient.GetServerMetadata(shortHostname)
+
+	if err != nil {
+		fmt.Printf("Error getting metadata: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf(server.HostName)
 	fmt.Println()
+	for _, ds := range server.DSList {
+		fmt.Println(ds.XMLID)
+	}
 	/*for i, ds := range deliveryServices {
 		if i == 3 {
 			fmt.Println(ds)

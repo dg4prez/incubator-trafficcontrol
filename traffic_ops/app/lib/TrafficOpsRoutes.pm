@@ -491,6 +491,7 @@ sub api_routes {
 	$r->get("/api/$version/profiles/#id/configfiles/ats/#filename")->over( authenticated => 1, not_ldap => 1 )->to ( 'ApacheTrafficServer#get_profile_config', namespace => 'API::Configs' );
 	$r->get("/api/$version/servers/#id/configfiles/ats/#filename")->over( authenticated => 1, not_ldap => 1 )->to ( 'ApacheTrafficServer#get_server_config', namespace => 'API::Configs' );
 	$r->get("/api/$version/cdns/#id/configfiles/ats/#filename")->over( authenticated => 1, not_ldap => 1 )->to ( 'ApacheTrafficServer#get_cdn_config', namespace => 'API::Configs' );
+	$r->get("/api/$version/servers/#id/metadata")->over( authenticated => 1, not_ldap => 1 )->to ( 'Metadata#get_metadata', namespace => $namespace );
 
 	# -- DB DUMP
 	$r->get("/api/$version/dbdump")->over( authenticated => 1, not_ldap => 1 )->to( 'Database#dbdump', namespace => $namespace );
@@ -506,7 +507,7 @@ sub api_routes {
 
 	# get all delivery services associated with a server (from deliveryservice_server table)
 	$r->get( "/api/$version/servers/:id/deliveryservices" => [ id => qr/\d+/ ] )->over( authenticated => 1, not_ldap => 1 )->to( 'Deliveryservice#get_deliveryservices_by_serverId', namespace => $namespace );
-
+	
 	# delivery service / server assignments
 	$r->post("/api/$version/deliveryservices/:xml_id/servers")->over( authenticated => 1, not_ldap => 1 )
 		->to( 'Deliveryservice#assign_servers', namespace => $namespace );
