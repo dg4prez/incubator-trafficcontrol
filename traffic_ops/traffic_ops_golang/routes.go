@@ -67,4 +67,3 @@ func rootHandler(d ServerData) http.Handler {
 	loggingProxyHandler := wrapAccessLog(d.TOSecret, rp)
 	return loggingProxyHandler
 }
-
