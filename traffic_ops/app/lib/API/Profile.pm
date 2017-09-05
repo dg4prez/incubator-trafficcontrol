@@ -43,6 +43,7 @@ sub index {
 					"cdn" 			=> defined($row->profile->cdn) ? $row->profile->cdn->id : undef,
 					"cdnName" 		=> defined($row->profile->cdn) ? $row->profile->cdn->name : undef,
 					"type" 			=> $row->profile->type,
+					"routingDisabled"	=> \$row->routing_disabled,
 					"lastUpdated" 	=> $row->profile->last_updated
 				}
 			);
@@ -61,6 +62,7 @@ sub index {
 					"cdn"         => defined($row->cdn) ? $row->cdn->id : undef,
 					"cdnName"     => defined($row->cdn) ? $row->cdn->name : undef,
 					"type"        => $row->type,
+					"routingDisabled"	=> \$row->routing_disabled,
 					"lastUpdated" => $row->last_updated
 				}
 			);
@@ -136,6 +138,7 @@ sub get_unassigned_profiles_by_paramId {
 				"cdn"         => defined($row->cdn) ? $row->cdn->id : undef,
 				"cdnName"     => defined($row->cdn) ? $row->cdn->name : undef,
 				"type"        => $row->type,
+				"routingDisabled"	=> \$row->routing_disabled,
 				"lastUpdated" => $row->last_updated
 			}
 		);
@@ -158,6 +161,7 @@ sub show {
 				"cdn"         => defined($row->cdn) ? $row->cdn->id : undef,
 				"cdnName"     => defined($row->cdn) ? $row->cdn->name : undef,
 				"type"        => $row->type,
+				"routingDisabled"	=> \$row->routing_disabled,
 				"lastUpdated" => $row->last_updated
 			}
 		);
@@ -190,6 +194,11 @@ sub create {
 		return $self->alert("Profile type is required.");
 	}
 
+	if ( defined( $params->{routingDisabled} ) && $params->{routingDisabled} != (0 || 1) ) {
+		print STDERR Dumper($params->{routingDisabled});
+		return $self->alert("Routing disabled is a boolean value.");
+	}
+
 	my $existing_profile = $self->db->resultset('Profile')->search( { name => $name } )->get_column('name')->single();
 	if ( $existing_profile && $name eq $existing_profile ) {
 		return $self->alert("profile with name $name already exists.");
@@ -199,15 +208,17 @@ sub create {
 	if ($existing_desc) {
 		return $self->alert("a profile with the exact same description already exists.");
 	}
-
+	
 	my $cdn = $params->{cdn};
 	my $type = $params->{type};
+	my $routing_disabled = defined($params->{routingDisabled}) ? $params->{routingDisabled} : 0;
 	my $insert = $self->db->resultset('Profile')->create(
 		{
 			name        => $name,
 			description => $description,
 			cdn         => $cdn,
 			type        => $type,
+			routing_disabled => $routing_disabled,
 		}
 	);
 	$insert->insert();
@@ -221,6 +232,7 @@ sub create {
 	$response->{description} = $description;
 	$response->{cdn}         = $cdn;
 	$response->{type}        = $type;
+	$response->{routingDisabled} = $routing_disabled;
 	return $self->success($response);
 }
 
@@ -333,6 +345,13 @@ sub update {
 		}
 	}
 
+	if ( defined( $params->{routingDisabled} ) && $params->{routingDisabled} != (0 || 1) ) {
+		print STDERR Dumper($params->{routingDisabled});
+		return $self->alert("Routing disabled is a boolean value.");
+	}
+
+	my $routing_disabled = defined($params->{routingDisabled}) ? $params->{routingDisabled} : 0;
+
 	if ( !defined( $params->{type} ) ) {
 		return $self->alert("Profile type is required.");
 	}
@@ -353,6 +372,7 @@ sub update {
 		description => $description,
 		cdn         => $cdn,
 		type        => $type,
+		routing_disabled => $routing_disabled,
 	};
 
 	my $rs = $profile->update($values);
@@ -363,6 +383,7 @@ sub update {
 		$response->{description} = $description;
 		$response->{cdn}         = $cdn;
 		$response->{type}        = $type;
+		$response->{routingDisabled} = $routing_disabled;
 		&log( $self, "Update profile with id: " . $id . " and name: " . $name, "APICHANGE" );
 		return $self->success( $response, "Profile was updated: " . $id );
 	}
