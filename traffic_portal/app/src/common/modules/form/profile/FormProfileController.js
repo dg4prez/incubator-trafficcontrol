@@ -28,6 +28,11 @@ var FormProfileController = function(profile, $scope, $location, $uibModal, form
 
     $scope.profile = profile;
 
+    $scope.falseTrue = [
+        { value: false, label: 'false' },
+        { value: true, label: 'true' }
+    ];
+
     $scope.types = [
         { value: 'ATS_PROFILE' },
         { value: 'TR_PROFILE' },
